@@ -58,7 +58,7 @@ public class Output extends OutputStream {
 			"bufferSize: " + bufferSize + " cannot be greater than maxBufferSize: " + maxBufferSize);
 		if (maxBufferSize < -1) throw new IllegalArgumentException("maxBufferSize cannot be < -1: " + maxBufferSize);
 		this.capacity = bufferSize;
-		this.maxCapacity = maxBufferSize == -1 ? Integer.MAX_VALUE : maxBufferSize;
+		this.maxCapacity = maxBufferSize == -1 ? Util.MAX_SAFE_ARRAY_SIZE : maxBufferSize;
 		buffer = new byte[bufferSize];
 	}
 
@@ -116,7 +116,7 @@ public class Output extends OutputStream {
 			"buffer has length: " + buffer.length + " cannot be greater than maxBufferSize: " + maxBufferSize);
 		if (maxBufferSize < -1) throw new IllegalArgumentException("maxBufferSize cannot be < -1: " + maxBufferSize);
 		this.buffer = buffer;
-		this.maxCapacity = maxBufferSize == -1 ? Integer.MAX_VALUE : maxBufferSize;
+		this.maxCapacity = maxBufferSize == -1 ? Util.MAX_SAFE_ARRAY_SIZE : maxBufferSize;
 		capacity = buffer.length;
 		position = 0;
 		total = 0;
@@ -482,8 +482,14 @@ public class Output extends OutputStream {
 	}
 
 	private void writeAscii_slow (String value, int charCount) throws KryoException {
-		byte[] buffer = this.buffer;
+		if (charCount == 0)
+			return;
+		// It should be possible to write at least one character.
+		if (capacity == 0) {
+			require(1);
+		}
 		int charIndex = 0;
+		byte[] buffer = this.buffer;
 		int charsToWrite = Math.min(charCount, capacity - position);
 		while (charIndex < charCount) {
 			value.getBytes(charIndex, charIndex + charsToWrite, buffer, position);

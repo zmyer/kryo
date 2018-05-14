@@ -64,7 +64,7 @@ public class ByteBufferOutput extends Output {
 	public ByteBufferOutput (int bufferSize, int maxBufferSize) {
 		if (maxBufferSize < -1) throw new IllegalArgumentException("maxBufferSize cannot be < -1: " + maxBufferSize);
 		this.capacity = bufferSize;
-		this.maxCapacity = maxBufferSize == -1 ? Integer.MAX_VALUE : maxBufferSize;
+		this.maxCapacity = maxBufferSize == -1 ? Util.MAX_SAFE_ARRAY_SIZE : maxBufferSize;
 		niobuffer = ByteBuffer.allocateDirect(bufferSize);
 		niobuffer.order(byteOrder);
 	}
@@ -163,7 +163,7 @@ public class ByteBufferOutput extends Output {
 		if (buffer == null) throw new IllegalArgumentException("buffer cannot be null.");
 		if (maxBufferSize < -1) throw new IllegalArgumentException("maxBufferSize cannot be < -1: " + maxBufferSize);
 		this.niobuffer = buffer;
-		this.maxCapacity = maxBufferSize == -1 ? Integer.MAX_VALUE : maxBufferSize;
+		this.maxCapacity = maxBufferSize == -1 ? Util.MAX_SAFE_ARRAY_SIZE : maxBufferSize;
 		byteOrder = buffer.order();
 		capacity = buffer.capacity();
 		position = buffer.position();
@@ -432,8 +432,8 @@ public class ByteBufferOutput extends Output {
 			if (capacity - position < charCount)
 				writeAscii_slow(value, charCount);
 			else {
-				byte[] tmp = value.getBytes();
-				niobuffer.put(tmp, 0, tmp.length);
+				for (int i = 0, n = value.length(); i < n; ++i)
+					niobuffer.put((byte)value.charAt(i));
 				position += charCount;
 			}
 			niobuffer.put(position - 1, (byte)(niobuffer.get(position - 1) | 0x80));
@@ -504,8 +504,8 @@ public class ByteBufferOutput extends Output {
 		if (capacity - position < charCount)
 			writeAscii_slow(value, charCount);
 		else {
-			byte[] tmp = value.getBytes();
-			niobuffer.put(tmp, 0, tmp.length);
+			for (int i = 0, n = value.length(); i < n; ++i)
+				niobuffer.put((byte)value.charAt(i));
 			position += charCount;
 		}
 		niobuffer.put(position - 1, (byte)(niobuffer.get(position - 1) | 0x80)); // Bit 8 means end of ASCII.

@@ -442,8 +442,8 @@ public class Kryo {
 	 * cause the old entry to be overwritten. Registering a primitive also affects the corresponding primitive wrapper.
 	 * <p>
 	 * IDs must be the same at deserialization as they were for serialization.
-	 * @param id Must be >= 0. Smaller IDs are serialized more efficiently. IDs 0-8 are used by default for primitive types and
-	 *           String, but these IDs can be repurposed. */
+	 * @param id Must be >= 0. Smaller IDs are serialized more efficiently. IDs 0-9 are used by default for primitive types
+	 *           and their wrappers, String, and void, but these IDs can be repurposed. */
 	public Registration register (Class type, Serializer serializer, int id) {
 		if (id < 0) throw new IllegalArgumentException("id must be >= 0: " + id);
 		return register(new Registration(type, serializer, id));
@@ -490,7 +490,7 @@ public class Kryo {
 			if (Proxy.isProxyClass(type)) {
 				// If a Proxy class, treat it like an InvocationHandler because the concrete class for a proxy is generated.
 				registration = getRegistration(InvocationHandler.class);
-			} else if (!type.isEnum() && Enum.class.isAssignableFrom(type)) {
+			} else if (!type.isEnum() && Enum.class.isAssignableFrom(type) && !Enum.class.equals(type)) {
 				// This handles an enum value that is an inner class. Eg: enum A {b{}};
 				registration = getRegistration(type.getEnclosingClass());
 			} else if (EnumSet.class.isAssignableFrom(type)) {
@@ -1261,7 +1261,7 @@ public class Kryo {
 		}
 
 		public ObjectInstantiator newInstantiatorOf (final Class type) {
-			if (!Util.isAndroid) {
+			if (!Util.IS_ANDROID) {
 				// Use ReflectASM if the class is not a non-static member class.
 				Class enclosingType = type.getEnclosingClass();
 				boolean isNonStaticMemberClass = enclosingType != null && type.isMemberClass()
@@ -1306,8 +1306,18 @@ public class Kryo {
 			if (fallbackStrategy == null) {
 				if (type.isMemberClass() && !Modifier.isStatic(type.getModifiers()))
 					throw new KryoException("Class cannot be created (non-static member class): " + className(type));
-				else
-					throw new KryoException("Class cannot be created (missing no-arg constructor): " + className(type));
+				else {
+					StringBuilder errorMessageSb = new StringBuilder("Class cannot be created (missing no-arg constructor): " + className(type));
+					if (type.getSimpleName().equals("")) {
+						errorMessageSb.append("\n\tThis is an anonymous class, which is not serializable by default in Kryo. Possible solutions: ")
+							.append("1. Remove uses of anonymous classes, including double brace initialization, from the containing ")
+							.append("class. This is the safest solution, as anonymous classes don't have predictable names for serialization.")
+							.append("\n\t2. Register a FieldSerializer for the containing class and call ")
+							.append( "FieldSerializer#setIgnoreSyntheticFields(false) on it. This is not safe but may be sufficient temporarily. ")
+							.append("Use at your own risk.");
+					}
+					throw new KryoException(errorMessageSb.toString());
+				}
 			}
 			// InstantiatorStrategy.
 			return fallbackStrategy.newInstantiatorOf(type);

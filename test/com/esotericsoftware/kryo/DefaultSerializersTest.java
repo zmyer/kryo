@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import org.junit.Assert;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
 import com.esotericsoftware.kryo.io.Input;
@@ -279,6 +280,14 @@ public class DefaultSerializersTest extends KryoTestCase {
 		test.add(Collections.singleton(12.34));
 		roundTrip(249, 251, test);
 	}
+	
+	public void testDeepCollectionCloning() {
+		kryo.setRegistrationRequired(false);
+		Object contents = new Object();
+		Assert.assertNotEquals(kryo.copy(Collections.singleton(contents)).iterator().next(), contents);
+		Assert.assertNotEquals(kryo.copy(Collections.singletonList(contents)).iterator().next(), contents);
+		Assert.assertNotEquals(kryo.copy(Collections.singletonMap(contents, contents)).values().iterator().next(), contents);
+	}
 
 	public void testCalendar () {
 		kryo.setRegistrationRequired(false);
@@ -314,6 +323,7 @@ public class DefaultSerializersTest extends KryoTestCase {
 		kryo.writeObject(out, void.class);
 		kryo.writeObject(out, ArrayList.class);
 		kryo.writeObject(out, TestEnum.class);
+		kryo.writeObject(out, Enum.class);
 
 		final Input in = new Input(out.getBuffer());
 
@@ -336,6 +346,7 @@ public class DefaultSerializersTest extends KryoTestCase {
 		assertEquals(void.class, kryo.readObject(in, Class.class));
 		assertEquals(ArrayList.class, kryo.readObject(in, Class.class));
 		assertEquals(TestEnum.class, kryo.readObject(in, Class.class));
+		assertEquals(Enum.class, kryo.readObject(in, Class.class));
 	}
 
 	public void testLocaleSerializer () {

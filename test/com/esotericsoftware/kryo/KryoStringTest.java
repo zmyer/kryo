@@ -17,56 +17,42 @@
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
-package com.esotericsoftware.kryo.util;
+package com.esotericsoftware.kryo;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.ReferenceResolver;
+import org.junit.Test;
 
-/** Uses an {@link IdentityObjectIntMap} to track objects that have already been written. This can handle graph with any number of
- * objects, but is slightly slower than {@link ListReferenceResolver} for graphs with few objects.
- * @author Nathan Sweet <misc@n4te.com> */
-public class MapReferenceResolver implements ReferenceResolver {
-	protected Kryo kryo;
-	protected final IdentityObjectIntMap writtenObjects = new IdentityObjectIntMap();
-	protected final ArrayList readObjects = new ArrayList();
+import com.esotericsoftware.kryo.FieldSerializerTest.DefaultTypes;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.pool.KryoFactory;
+import com.esotericsoftware.kryo.pool.KryoPool;
+import com.esotericsoftware.kryo.serializers.MapSerializer;
 
-	public void setKryo (Kryo kryo) {
-		this.kryo = kryo;
-	}
+public class KryoStringTest extends KryoTestCase {
 
-	public int addWrittenObject (Object object) {
-		int id = writtenObjects.size;
-		writtenObjects.put(object, id);
-		return id;
-	}
+	static KryoFactory factory = new KryoFactory() {
+		@Override
+		public Kryo create () {
+			Kryo kryo = new Kryo();
+			return kryo;
+		}
+	};
 
-	public int getWrittenId (Object object) {
-		return writtenObjects.get(object, -1);
-	}
+	public void testSerialize () {
+		String reason = "node/read";
+		long localTimestamp = 1;
+		KryoPool pool = new KryoPool.Builder(factory).softReferences().build();
+		Kryo kryo = pool.borrow();
 
-	public int nextReadId (Class type) {
-		int id = readObjects.size();
-		readObjects.add(null);
-		return id;
-	}
-
-	public void setReadObject (int id, Object object) {
-		readObjects.set(id, object);
-	}
-
-	public Object getReadObject (Class type, int id) {
-		return readObjects.get(id);
-	}
-
-	public void reset () {
-		readObjects.clear();
-		writtenObjects.clear(2048);
-	}
-
-	/** Returns false for all primitive wrappers. */
-	public boolean useReferences (Class type) {
-		return !Util.isWrapperClass(type);
+		// Allocate an output buffer with initial size of 0.
+		final Output output = new Output(0, 10024);
+		// Check that it is possible to write an ASCII string into the output buffer.
+		output.writeString(reason);
 	}
 }
